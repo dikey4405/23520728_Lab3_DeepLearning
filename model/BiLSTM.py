@@ -40,7 +40,7 @@ class BiLSTM_NER(nn.Module):
         emb = self.dropout(self.embedding(input_ids))
         
         packed_input = pack_padded_sequence(emb, lengths.cpu(), batch_first=True, enforce_sorted=False)
-        packed_output, _ = self.lstm(packed_input)
+        packed_output, _ = self.bilstm(packed_input)
         output, _ = pad_packed_sequence(packed_output, batch_first=True)
         
         logits = self.output_layer(self.dropout(output))
