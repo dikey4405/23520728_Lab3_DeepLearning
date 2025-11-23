@@ -89,9 +89,9 @@ if __name__ == "__main__":
     data_dir = "/kaggle/input/phoner"
     output_dir = "." 
     
-    train_path = path.join(data_dir, "train.json")
-    dev_path = path.join(data_dir, "dev.json")
-    test_path = path.join(data_dir, "test.json")
+    train_path = path.join(data_dir, "train_word.json")
+    dev_path = path.join(data_dir, "dev_word.json")
+    test_path = path.join(data_dir, "test_word.json")
     
     best_model_path = path.join(output_dir, "best_ner_model.pt")
 
@@ -155,3 +155,4 @@ if __name__ == "__main__":
           
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"Final F1 score on TEST set: {test_f1}")
+
