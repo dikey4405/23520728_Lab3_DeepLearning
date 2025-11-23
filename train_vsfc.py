@@ -76,21 +76,21 @@ def evaluate(model: nn.Module, data: DataLoader, epoch: int) -> float:
 
 if __name__ == "__main__":
     logging.info("Loading vocab ... ")
-    vocab = Vocab(path="/kaggle/input/uit_vsfc")
+    vocab = Vocab(path="/kaggle/input/vsfc-data")
     logging.info("Loading dataset ... ")
 
     train_dataset = UIT_VSFC(
-        "/kaggle/input/uit_vsfc/UIT-VSFC-train.json",
+        "/kaggle/input/vsfc-data/UIT-VSFC-train.json",
         vocab=vocab
     )
 
     dev_dataset = UIT_VSFC(
-        "/kaggle/input/uit_vsfc/UIT-VSFC-dev.json",
+        "/kaggle/input/vsfc-data/UIT-VSFC-dev.json",
         vocab=vocab
     )
 
     test_dataset = UIT_VSFC(
-        "/kaggle/input/uit_vsfc/uit_vsfc/UIT-VSFC-test.json",
+        "/kaggle/input/vsfc-data/UIT-VSFC-test.json",
         vocab=vocab
     )
     logging.info("Creating dataloader ... ")
@@ -151,6 +151,7 @@ if __name__ == "__main__":
     
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"F1 score on test set: {test_f1}") 
+
 
 
 
