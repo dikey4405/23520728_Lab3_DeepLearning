@@ -10,6 +10,8 @@ from tqdm import tqdm
 import logging
 import numpy as np
 
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train(model: nn.Module, 
