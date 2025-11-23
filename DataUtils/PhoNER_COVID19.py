@@ -5,14 +5,33 @@ import json
 import os
 from collections import Counter
 
+# --- Hàm hỗ trợ đọc file JSON hoặc JSONL ---
+def load_json_or_jsonl(filepath: str):
+    data = []
+    try:
+        # Cách 1: Thử đọc như file JSON thông thường (Standard JSON)
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        # Cách 2: Nếu lỗi, thử đọc như file JSON Lines (từng dòng một)
+        print(f"File {filepath} có vẻ là JSON Lines. Đang chuyển sang chế độ đọc từng dòng...")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    data.append(json.loads(line))
+    return data
+
 class Vocab:
     def __init__(self, train_filepath: str, min_freq: int = 1):
         word_counter = Counter()
         tag_set = set()
 
         print(f"Building vocab from: {train_filepath}")
+        
+        # --- SỬA Ở ĐÂY: Dùng hàm load thông minh ---
         try:
-            data = json.load(open(train_filepath, encoding='utf-8'))
+            data = load_json_or_jsonl(train_filepath)
         except Exception as e:
             raise ValueError(f"Không thể đọc file {train_filepath}. Lỗi: {e}")
 
@@ -43,7 +62,6 @@ class Vocab:
         self.tag2idx = {
             tag: i for i, tag in enumerate(sorted(list(tag_set)))
         }
-        # Gán nhãn padding là -100 (để CrossEntropyLoss bỏ qua)
         self.tag2idx[self.pad_tag] = -100 
         self.idx2tag = {i: t for t, i in self.tag2idx.items()}
     
@@ -55,10 +73,14 @@ class Vocab:
         return torch.tensor(ids, dtype=torch.long)
     
     def encode_tags(self, tags: list[str]) -> torch.Tensor:
-        ids = [self.tag2idx.get(tag, -100) for tag in tags] # Thêm get để an toàn
+        ids = [self.tag2idx.get(tag, -100) for tag in tags]
         return torch.tensor(ids, dtype=torch.long)
     
-    # 3. THÊM: Hàm decode để dùng khi in kết quả kiểm tra
+    def decode_tokens(self, ids: list[int]) -> list[str]:
+        if isinstance(ids, torch.Tensor):
+            ids = ids.tolist()
+        return [self.idx2word.get(i, self.unk) for i in ids]
+
     def decode_tags(self, ids: list[int]) -> list[str]:
         if isinstance(ids, torch.Tensor):
             ids = ids.tolist()
@@ -66,19 +88,21 @@ class Vocab:
 
     @property
     def n_tags(self) -> int:
-        # Trả về số lượng tags thực tế (không tính padding -100)
         return len([i for i in self.tag2idx.values() if i != -100])
     
     @property
     def vocab_size(self) -> int:
         return len(self.word2idx)
 
+
 class PhoNER_COVID19(Dataset):
     def __init__(self, path: str, vocab: Vocab):
         super().__init__()
         self.vocab = vocab
-        # Thêm encoding='utf-8' để tránh lỗi trên Windows/Colab
-        self.data = json.load(open(path, encoding='utf-8'))
+        
+        # --- SỬA Ở ĐÂY: Cũng phải dùng hàm load thông minh cho Dataset ---
+        print(f"Loading data from: {path}")
+        self.data = load_json_or_jsonl(path)
     
     def __len__(self) -> int:
         return len(self.data)
@@ -101,10 +125,8 @@ def collate_fn(items: list[dict]) -> dict:
     input_ids = [item["input_ids"] for item in items]
     tags_ids = [item["tags_ids"] for item in items]
     
-    # Tính lengths cho pack_padded_sequence
     lengths = torch.tensor([len(seq) for seq in input_ids], dtype=torch.long)
     
-    # Padding
     padded_input = pad_sequence(input_ids, batch_first=True, padding_value=0)
     padded_tags = pad_sequence(tags_ids, batch_first=True, padding_value=-100)
 
