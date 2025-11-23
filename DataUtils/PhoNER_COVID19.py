@@ -5,22 +5,39 @@ import json
 import os
 from collections import Counter
 
-# --- Hàm hỗ trợ đọc file JSON hoặc JSONL ---
 def load_json_or_jsonl(filepath: str):
     data = []
     try:
-        # Cách 1: Thử đọc như file JSON thông thường (Standard JSON)
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError:
-        # Cách 2: Nếu lỗi, thử đọc như file JSON Lines (từng dòng một)
         print(f"File {filepath} có vẻ là JSON Lines. Đang chuyển sang chế độ đọc từng dòng...")
         with open(filepath, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    data.append(json.loads(line))
+                    try:
+                        data.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue # Bỏ qua dòng lỗi
     return data
+
+def extract_data(item: dict):
+    tokens = item.get("tokens")
+    if tokens is None:
+        tokens = item.get("words")
+    if tokens is None:
+        tokens = item.get("syllables")
+    
+    tags = item.get("tags")
+    if tags is None:
+        tags = item.get("ner_tags")
+
+    if tokens is None or tags is None:
+        # In ra để debug xem key thực tế là gì
+        raise KeyError(f"Không tìm thấy key 'tokens'/'words' hoặc 'tags'. Keys hiện có: {list(item.keys())}")
+        
+    return tokens, tags
 
 class Vocab:
     def __init__(self, train_filepath: str, min_freq: int = 1):
@@ -29,15 +46,22 @@ class Vocab:
 
         print(f"Building vocab from: {train_filepath}")
         
-        # --- SỬA Ở ĐÂY: Dùng hàm load thông minh ---
         try:
             data = load_json_or_jsonl(train_filepath)
         except Exception as e:
             raise ValueError(f"Không thể đọc file {train_filepath}. Lỗi: {e}")
 
-        for item in data:
-            tokens = item["tokens"]
-            tags = item["tags"]
+        # Kiểm tra dữ liệu rỗng
+        if not data:
+            raise ValueError("File dữ liệu rỗng!")
+
+        for i, item in enumerate(data):
+            try:
+                tokens, tags = extract_data(item)
+            except KeyError as e:
+                # Chỉ báo lỗi ở item đầu tiên để người dùng biết
+                if i == 0: raise e
+                continue
 
             for toks in tokens:
                 word_counter[toks.lower()] += 1
@@ -64,6 +88,9 @@ class Vocab:
         }
         self.tag2idx[self.pad_tag] = -100 
         self.idx2tag = {i: t for t, i in self.tag2idx.items()}
+        
+        print(f"Vocab size: {len(self.word2idx)}")
+        print(f"Num tags: {len(self.tag2idx)-1}") # Trừ pad_tag
     
     def encode_tokens(self, tokens: list[str]) -> torch.Tensor:
         ids = []
@@ -100,7 +127,6 @@ class PhoNER_COVID19(Dataset):
         super().__init__()
         self.vocab = vocab
         
-        # --- SỬA Ở ĐÂY: Cũng phải dùng hàm load thông minh cho Dataset ---
         print(f"Loading data from: {path}")
         self.data = load_json_or_jsonl(path)
     
@@ -110,8 +136,7 @@ class PhoNER_COVID19(Dataset):
     def __getitem__(self, index: int) -> dict:
         item = self.data[index]
 
-        tokens: list[str] = item["tokens"]
-        tags: list[str] = item["tags"]
+        tokens, tags = extract_data(item)
 
         input_ids = self.vocab.encode_tokens(tokens)
         tags_ids = self.vocab.encode_tags(tags)
