@@ -135,7 +135,7 @@ if __name__ == "__main__":
     best_f1 = 0
     previous_f1 = 0
     patience = 0
-    best_model_path = "best_model.pt"
+    best_model_path = "/kaggle/working/best_model.pt"
 
     while True:
         epoch += 1
@@ -159,6 +159,7 @@ if __name__ == "__main__":
           
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"F1 score on test set: {test_f1}") 
+
 
 
 
