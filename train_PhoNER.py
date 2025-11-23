@@ -82,9 +82,9 @@ if __name__ == "__main__":
     vocab = Vocab(path="/kaggle/input/phoner", min_freq=1)
 
     logging.info("Loading dataset ... ")
-    train_dataset = PhoNER_COVID19("/kaggle/input/phoner/train.json", vocab=vocab)
-    dev_dataset = PhoNER_COVID19("/kaggle/input/phoner/dev.json", vocab=vocab)
-    test_dataset = PhoNER_COVID19("/kaggle/input/phoner/test.json", vocab=vocab)
+    train_dataset = PhoNER_COVID19("/kaggle/input/phoner/train_word.json", vocab=vocab)
+    dev_dataset = PhoNER_COVID19("/kaggle/input/phoner/dev_word.json", vocab=vocab)
+    test_dataset = PhoNER_COVID19("/kaggle/input/phoner/test_word.json", vocab=vocab)
 
     logging.info("Creating dataloader ... ")
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=collate_fn)
@@ -133,4 +133,5 @@ if __name__ == "__main__":
     model.to(device)
           
     test_f1 = evaluate(model, test_dataloader, epoch)
+
     logging.info(f"Final F1 score on TEST set: {test_f1}")
