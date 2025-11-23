@@ -135,6 +135,7 @@ if __name__ == "__main__":
     best_f1 = 0
     previous_f1 = 0
     patience = 0
+    best_model_path = "best_model.pt"
 
     while True:
         epoch += 1
@@ -143,6 +144,7 @@ if __name__ == "__main__":
         if f1 > best_f1:
             best_f1 = f1
             patience = 0
+            torch.save(model.state_dict(), best_model_path)
         else:
             patience += 1
         
@@ -150,9 +152,14 @@ if __name__ == "__main__":
         if ((patience == 10) or (epoch == 20)):
             logging.info("Patience exceeded. Stopping training.")
             break
-    
+                  
+    logging.info("Loading best model for final test ...")
+    model.load_state_dict(torch.load(best_model_path))
+    model.to(device)
+          
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"F1 score on test set: {test_f1}") 
+
 
 
 
