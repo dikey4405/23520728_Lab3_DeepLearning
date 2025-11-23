@@ -8,16 +8,18 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from tqdm import tqdm
 import logging
 import numpy as np
+import os
 from os import path
 
+# Setup Logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train(model: nn.Module, 
-          data: torch.utils.data.DataLoader, 
+          data: DataLoader, 
           epoch: int, 
           loss_fn: nn.Module, 
-          optimizer: optim.Optimizer) -> None:
+          optimizer: optim.Optimizer) -> float:
 
     model.train()
     running_loss = []
@@ -30,8 +32,12 @@ def train(model: nn.Module,
 
         optimizer.zero_grad()
         
+        # Forward pass
         logits = model(input_ids, lengths) 
 
+        # Flatten output và labels để tính Loss
+        # Logits: [Batch * Seq, Num_Tags]
+        # Labels: [Batch * Seq]
         loss = loss_fn(logits.view(-1, logits.shape[-1]), tags_ids.view(-1))
 
         loss.backward()
@@ -58,6 +64,7 @@ def evaluate(model: nn.Module, data: DataLoader, epoch: int) -> float:
             logits = model(input_ids, lengths)
             predicted_tags = torch.argmax(logits, dim=-1)
 
+            # Lọc bỏ padding (-100) để tính điểm chính xác
             mask = tags_ids != -100
             
             valid_tags = tags_ids[mask].cpu().numpy()
@@ -66,6 +73,7 @@ def evaluate(model: nn.Module, data: DataLoader, epoch: int) -> float:
             true_labels.extend(valid_tags)
             predictions.extend(valid_preds)
             
+    # Tính toán Metrics
     precision = precision_score(true_labels, predictions, average='macro', zero_division=0)
     recall = recall_score(true_labels, predictions, average='macro', zero_division=0)
     f1 = f1_score(true_labels, predictions, average='macro', zero_division=0)
@@ -78,13 +86,24 @@ def evaluate(model: nn.Module, data: DataLoader, epoch: int) -> float:
     return f1
 
 if __name__ == "__main__":
+    data_dir = "/kaggle/input/phoner"
+    output_dir = "." 
+    
+    train_path = path.join(data_dir, "train.json")
+    dev_path = path.join(data_dir, "dev.json")
+    test_path = path.join(data_dir, "test.json")
+    
+    best_model_path = path.join(output_dir, "best_ner_model.pt")
+
+    logging.info(f"Device being used: {device}")
+
     logging.info("Loading vocab ... ")
-    vocab = Vocab(path="/kaggle/input/phoner", min_freq=1)
+    vocab = Vocab(train_filepath=train_path, min_freq=1)
 
     logging.info("Loading dataset ... ")
-    train_dataset = PhoNER_COVID19("/kaggle/input/phoner/train_word.json", vocab=vocab)
-    dev_dataset = PhoNER_COVID19("/kaggle/input/phoner/dev_word.json", vocab=vocab)
-    test_dataset = PhoNER_COVID19("/kaggle/input/phoner/test_word.json", vocab=vocab)
+    train_dataset = PhoNER_COVID19(train_path, vocab=vocab)
+    dev_dataset = PhoNER_COVID19(dev_path, vocab=vocab)
+    test_dataset = PhoNER_COVID19(test_path, vocab=vocab)
 
     logging.info("Creating dataloader ... ")
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=collate_fn)
@@ -94,22 +113,24 @@ if __name__ == "__main__":
     logging.info("Building Bi-LSTM NER model ... ")
     model = BiLSTM_NER(
         vocab_size=vocab.vocab_size,
-        embedding_dim=100, # Embedding thường là 100 hoặc 300
+        embedding_dim=300, 
         hidden_size=256,
-        num_tags=vocab.n_tags, 
+        num_tags=vocab.n_tags,
         num_layers=5,
         dropout=0.5,
         padding_idx=0
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss(ignore_index=-100)
-    optimizer = optim.Adam(model.parameters(), lr=1e-4) 
+    optimizer = optim.Adam(model.parameters(), lr=1e-3) 
+
     epoch = 0
     best_f1 = 0
     patience = 0
     patience_limit = 10
-    best_model_path = "/kaggle/working/best_ner_model.pt"
-
+    
+    logging.info("Starting training ...")
+    
     while True:
         epoch += 1
         train_loss = train(model, train_dataloader, epoch, loss_fn, optimizer)
@@ -124,7 +145,7 @@ if __name__ == "__main__":
             patience += 1
             logging.info(f"No improvement. Patience: {patience}/{patience_limit}")
         
-        if ((patience == patience_limit) or (epoch == 50)): 
+        if ((patience == patience_limit) or (epoch == 30)): 
             logging.info("Stopping training.")
             break
                   
@@ -133,5 +154,4 @@ if __name__ == "__main__":
     model.to(device)
           
     test_f1 = evaluate(model, test_dataloader, epoch)
-
     logging.info(f"Final F1 score on TEST set: {test_f1}")
