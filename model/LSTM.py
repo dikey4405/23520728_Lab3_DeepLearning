@@ -20,10 +20,11 @@ class LSTMClassifier(nn.Module):
         )
 
         self.lstm = nn.LSTM(
-            input_size=hidden_size,
-            hidden_size=hidden_size,
+           input_size=hidden_size,
+            hid den_size=hidden_size,
             num_layers=num_layers,
-            batch_first=True
+            batch_first=True,
+            dropout=0.3
         )
     
         self.classifier = nn.Linear(
@@ -37,4 +38,5 @@ class LSTMClassifier(nn.Module):
 
         features = features[-1]
         logits = self.classifier(features)
+
         return logits
