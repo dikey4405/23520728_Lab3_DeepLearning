@@ -24,7 +24,7 @@ class LSTMClassifier(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
-            dropout=0.3
+            dropout=0.5
         )
     
         self.classifier = nn.Linear(
@@ -40,4 +40,5 @@ class LSTMClassifier(nn.Module):
         logits = self.classifier(features)
 
         return logits
+
 
