@@ -129,7 +129,7 @@ if __name__ == "__main__":
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=1e-5)
 
     epoch = 0
     best_f1 = 0
@@ -159,6 +159,7 @@ if __name__ == "__main__":
           
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"F1 score on test set: {test_f1}") 
+
 
 
 
