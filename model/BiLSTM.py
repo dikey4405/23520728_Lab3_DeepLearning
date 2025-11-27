@@ -10,7 +10,7 @@ class BiLSTM_NER(nn.Module):
             num_layers: int,
             num_tags: int,
             padding_idx: int = 0,
-            dropout: float = 0.5
+            dropout: float = 0.3
             ):
         super().__init__()
 
@@ -46,3 +46,4 @@ class BiLSTM_NER(nn.Module):
         logits = self.output_layer(self.dropout(output))
         return logits
         
+
