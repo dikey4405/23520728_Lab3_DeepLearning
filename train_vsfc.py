@@ -149,7 +149,7 @@ if __name__ == "__main__":
             patience += 1
         
         current_f1 = f1
-        if ((patience == 10) or (epoch == 20)):
+        if ((patience == 10) or (epoch == 200)):
             logging.info("Patience exceeded. Stopping training.")
             break
                   
@@ -159,6 +159,7 @@ if __name__ == "__main__":
           
     test_f1 = evaluate(model, test_dataloader, epoch)
     logging.info(f"F1 score on test set: {test_f1}") 
+
 
 
 
